@@ -12,7 +12,7 @@ import pandas as pd
 import random
 
 
-DS_PATH = "/home/alicia/data_personal/cebra_data"
+DS_PATH = "/home/alicia/data3_personal/cebra_data"
 
 
 def concatenate(neurons, behavior, normalization, dataset_index,
@@ -54,7 +54,7 @@ def concatenate(neurons, behavior, normalization, dataset_index,
             new_trace_lists[j] += normalize(neural_trace, normalization).tolist()
 
     dir_name = '-'.join(neurons)
-    new_dir = f"/home/alicia/data_personal/cebra_data/{dir_name}"
+    new_dir = f"/home/alicia/data3_personal/cebra_data/{dir_name}"
     if not os.path.exists(new_dir):
         os.mkdir(new_dir)
     new_trace_df = pd.DataFrame(
@@ -144,7 +144,7 @@ def assemble(neurons, behavior, normalization, max_length=1600):
             new_trace_df[f"{neuron}_{dataset}"] = normalized_neural_trace
 
     dir_name = '-'.join(neurons)
-    new_dir = f"/home/alicia/data_personal/cebra_data/{dir_name}"
+    new_dir = f"/home/alicia/data3_personal/cebra_data/{dir_name}"
     if not os.path.exists(new_dir):
         os.mkdir(new_dir)
     '''
@@ -204,7 +204,7 @@ def map_neuron_to_heatmap_id(neurons):
         neurons: a list of neuron names, e.g. SMDD, RIB, AVE
     '''
 
-    home_path = '/home/alicia/data_personal'
+    home_path = '/home/alicia/data3_personal'
     with open(f'{home_path}/analysis_dict_matches.json', 'r') as f:
         matches = json.load(f)
 
