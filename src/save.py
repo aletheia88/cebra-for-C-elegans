@@ -11,19 +11,19 @@ import pandas as pd
 
 def save_multi_session_model_outputs(parameters):
 
-    model_path = f'/home/alicia/data_personal/cebra_outputs/RIB-AVE'
+    model_path = f'/home/alicia/data3_personal/cebra_outputs/RIB-AVE'
     model_name = \
     f'learning_rate_{parameters[0]}_min_temperature_{parameters[1]}_output_dimension_{parameters[2]}_CEBRA-behavior.pt'
     model = cebra.CEBRA.load(f'{model_path}/{model_name}')
 
     neurons = 'RIB-AVE'
-    ds_path = f'/home/alicia/data_personal/cebra_data/{neurons}'
+    ds_path = f'/home/alicia/data3_personal/cebra_data/{neurons}'
     neural_df = pd.read_csv(f'{ds_path}/{neurons}_f10_0.csv')
     neural_data = neural_df.to_numpy()
     neural_data_series = preprocess(neural_data)
     ds_names = neural_df.columns.tolist()
 
-    save_dir = f'/home/alicia/data_personal/cebra_outputs/{neurons}'
+    save_dir = f'/home/alicia/data3_personal/cebra_outputs/{neurons}'
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -38,9 +38,10 @@ def save_multi_session_model_outputs(parameters):
 def save_augmented_model_outputs(experiment_name, model_name, ds_name,
             save_augmented_dataset=False):
 
-    model_path = f'/home/alicia/data_personal/cebra_grid_searches/{experiment_name}'
+    model_path = f'/home/alicia/data3_personal/cebra_grid_searches/{experiment_name}'
+
     model = cebra.CEBRA.load(f'{model_path}/{model_name}')
-    ds_path = '/home/alicia/data_personal/cebra_data'
+    ds_path = '/home/alicia/data3_personal/cebra_data'
     df = pd.read_csv(f'{ds_path}/{ds_name}')
     neural_data = df.iloc[:, :-1].values
     behaviors = df.iloc[:, -1].values.reshape(-1, 1)
@@ -67,7 +68,7 @@ def save_augmented_model_outputs(experiment_name, model_name, ds_name,
         new_df[list(df.columns)[-1]] = augmented_neural_data[:, -1]
         print(new_df)
     '''
-    save_dir = f'/home/alicia/data_personal/cebra_outputs/{ds_name}'
+    save_dir = f'/home/alicia/data3_personal/cebra_outputs/{ds_name}'
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -109,16 +110,25 @@ def save_model_outputs(experiment_name, model_name, ds_name):
 
     model_search_path = '/home/alicia/data3_personal/cebra_grid_searches'
     ds_path = '/home/alicia/data3_personal/cebra_data'
+
     model = cebra.CEBRA.load(f'{model_search_path}/{experiment_name}/{model_name}')
     df = pd.read_csv(f'{ds_path}/{ds_name}')
-    print(df.iloc[:, :-2])
-    neural_data = df.iloc[:, :-2].values
+    neural_data = df.iloc[:, :-1].values
 
     # add derivative columns to neural traces
+
     derivatives = get_matrix_derivative(neural_data)
     neural_data_n_derivatives = np.hstack((neural_data, derivatives))
 
     embedding = model.transform(neural_data_n_derivatives)
+
+    # create new path to keep the model outputs
+
+    experiment_dir, experiment = experiment_name.split('/')
+    experiment_path = \
+            f'/home/alicia/data3_personal/cebra_outputs/{experiment_dir}'
+    if not os.path.exists(experiment_path):
+        os.mkdir(experiment_path)
 
     model_outputs_path = f'/home/alicia/data3_personal/cebra_outputs/{experiment_name}'
     if not os.path.exists(model_outputs_path):
@@ -141,25 +151,9 @@ def save_model_outputs(experiment_name, model_name, ds_name):
 
 
 if __name__ == "__main__":
-    '''
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", "-mn",
-                        metavar="STRING",
-                        help="Enter the model name")
-    parser.add_argument("--ds_name", "-dn",
-                        metavar="STRING",
-                        help="Enter the dataset name")
-    args = parser.parse_args()
-    save_model_outputs(args)
-    '''
-    ds_name = 'RIB-AVE-AVA-X/RIB-AVE-AVA-X_turndiff_f10_1.csv'
-    experiment_name = 'RIB-AVE-AVA-X/RIB-AVE-AVA-X_turndiff_f10_1'
+    ds_name = "RMED-RMEV-RMEL/RMED-RMEV-RMEL_reveral-velocity_f10_4.csv"
+    experiment_name = "RMED-RMEV-RMEL/RMED-RMEV-RMEL_reveral-velocity_f10_4"
     model_name = \
-        'learning_rate_0.0001_min_temperature_0.01_num_hidden_units_8_output_dimension_5_CEBRA-behavior.pt'
-    #save_augmented_model_outputs(experiment_name, model_name, ds_name, True)
+            "learning_rate_0.0001_min_temperature_1_num_hidden_units_32_output_dimension_8_CEBRA-behavior.pt"
     save_model_outputs(experiment_name, model_name, ds_name)
 
-    #ds_name = '2022-06-14-13/2022-06-14-13_velocity_f20_subset_0'
-    #parameters = [0.001, 0.1, 3]
-    #save_augmented_model_outputs(ds_name, parameters)
-    #save_multi_session_model_outputs(parameters)
