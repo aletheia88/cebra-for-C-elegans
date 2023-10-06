@@ -1,8 +1,9 @@
 from evaluate import iterate
-from query import match_neurons_to_datasets
+from query import get_neuron_id
 from tqdm import tqdm
-from util import create_train_test_sets, map_neuron_to_heatmap_id, normalize
+from util import create_train_test_sets, normalize
 import cebra
+import copy
 import h5py
 import json
 import numpy as np
@@ -10,69 +11,36 @@ import os
 import pandas as pd
 
 
+def run():
 
-def extract_reversals(dataset, neurons):
-
-    processed_h5_path = "/data3/shared/processed_h5_kfc"
-    with h5py.File( f"{processed_h5_path}/{dataset}-data.h5", 'r') as f:
-        reversal_events = f['behavior']['reversal_events'][:] - 1
-        velocity_original = f['behavior']['velocity'][:]
-        trace_original = f['gcamp']['trace_array_original'][:]
-
-    velocity_reversals = [
-                velocity_original[reversal_events[0][i]:reversal_events[1][i]]
-                    for i in range(len(reversal_events[0]))
-    ]
-    behavior_df = pd.DataFrame(np.concatenate(velocity_reversals),
-            columns=['velocity'])
-
-    map_dict = map_neuron_to_heatmap_id(neurons)
-    neuron_ids = [map_dict[neuron][dataset] for neuron in neurons]
-    trace_reversals = [
-                trace_original[reversal_events[0][i]:reversal_events[1][i]]
-                    for i in range(len(reversal_events[0]))
-    ]
-    trace_reversals_subset = [
-            trace_reversal[:, neuron_ids]
-                for trace_reversal in trace_reversals
-    ]
-
-    trace_df = pd.DataFrame(np.concatenate(trace_reversals_subset, axis=0),
-                        columns=neurons)
-    trace_behavior_df = pd.concat([trace_df, behavior_df], axis=1)
-    print(trace_df)
-    print(trace_behavior_df)
-    return trace_df, behavior_df
+    """
+    run locomotion neuron experiments
+        - experiment: RMED-RMEL-RIB_reveral-velocity_f10_7
+            * neurons: RMED RMEL RIB AVE
+            * number of animals: 7
+        - experiment: RMED-RMEV-RMEL_reveral-velocity_f10_4
+            * neurons: RMED RMEV RMEL RIB AIB
+            * number of animals: 4
+    """
+    dataset_name = "RMED-RMEV-RMEL/RMED-RMEV-RMEL_reveral-velocity_f10_4.csv"
+    explore(dataset_name)
 
 
-def explore_1():
+def explore(dataset_name):
 
-    locomotion_neurons = ['AVB', 'RIB', 'RID', 'RME', 'VB02', 'AVA', 'AVE',
-                        'AIB', 'RIM', 'RMED']
-    locomotion_datasets = match_neurons_to_datasets(locomotion_neurons)
-    print(f'locomotion_datasets: {locomotion_datasets}')
-    turning_neurons = ['SAAR', 'SMBR', 'SMDD', 'SIAV', 'SIBL', 'RIVR']
-    turning_datasets = match_neurons_to_datasets(turning_neurons)
-    print(f'turning_datasets: {turning_datasets}')
-
-
-
-def explore_0(ds_name):
-
-    '''Search for best CEBRA model that predicts difference in turning angle
-    from a selection of neural traces (and their derivatives)
-    '''
+    data_path = "/home/alicia/data3_personal/cebra_data"
     parameter_grid = dict(
         model_architecture="offset10-model",
         min_temperature=[0.01, 0.1, 1],
         temperature_mode = "auto",
-        time_offsets=[10],
-        max_iterations=[10000],
+        time_offsets=10,
+        max_iterations=1,
         learning_rate=[0.0001, 0.001],
         output_dimension=[3, 5, 8],
         num_hidden_units=[8, 16, 32],
-        batch_size=1024,
-        device='cuda:0',
+        batch_size=128,
+        device='cuda:3',
+        #device="cuda_if_available",
         verbose=True)
 
     noise_ds_name = '2022-01-07-03/2022-01-07-03_F20.csv'
@@ -81,14 +49,111 @@ def explore_0(ds_name):
     num_augments = 0
     noise_multiplier = 1
     num_neighbors = [2*n+1 for n in range(1, 200, 10)]
-    num_label = 2
-    save_models_dir = f"/home/alicia/data3_personal/cebra_grid_searches/{ds_name.split('.')[0]}"
+    num_label = 1
+
+    experiment_dir, experiment_name = dataset_name.split('.')[0].split('/')
+
+    output_path = "/home/alicia/data3_personal/cebra_grid_searches"
+
+    if not os.path.exists(f"{output_path}/{experiment_dir}"):
+        os.mkdir(f"{output_path}/{experiment_dir}")
+
+    save_models_dir = f"{output_path}/{experiment_dir}/{experiment_name}"
     if not os.path.exists(save_models_dir):
         os.mkdir(save_models_dir)
 
-    iterate(parameter_grid, ds_name, noise_ds_name, train_ratio,
+    iterate(parameter_grid, dataset_name, noise_ds_name, train_ratio,
             num_train_test_splits, num_augments, noise_multiplier,
             num_neighbors, num_label, save_models_dir)
+
+
+def concatenate_reversal_datasets(datasets, neurons, normalization):
+
+    """Concatenate all the given animal datasets by appending the next animal's
+    neural activities and behaviors to the ones of the previous animal
+
+    Args:
+        datasets: a list of dataset names; e.g. ['2023-01-10-07',
+                '2023-01-10-14', '2023-01-16-08', '2023-01-23-15']
+        neurons: a list of neuron names
+    """
+    new_behavior_list = []
+    new_trace_list = []
+    for dataset in datasets:
+        trace_df, behavior_df = extract_reversals(dataset, neurons, normalization)
+        new_behavior_list.append(behavior_df)
+        new_trace_list.append(trace_df)
+
+    dir_name = '-'.join(neurons[:3])
+    new_dir = f"/home/alicia/data3_personal/cebra_data/{dir_name}"
+    if not os.path.exists(new_dir):
+        os.mkdir(new_dir)
+
+    new_trace_df = pd.concat(new_trace_list, ignore_index=True)
+    new_behavior_df = pd.concat(new_behavior_list, ignore_index=True)
+    new_trace_behavior_df = pd.concat([new_trace_df, new_behavior_df], axis=1)
+
+    # index dataset by the number of animals concatenated
+    dataset_index = len(datasets)
+    new_trace_behavior_df.to_csv(
+            f"{new_dir}/{dir_name}_reveral-velocity_f{normalization}_{dataset_index}.csv",
+            index=False
+    )
+
+
+def extract_reversals(dataset, neurons, normalization):
+
+    """Extract segments from the given dataset's neural activities and animal
+    behaviors where reversal happens and concatenate the extracted segments to
+    create a new dataframe
+
+    Args:
+        dataset: name of the dataset; e.g. '2023-01-23-15'
+        neurons: a list of neuron to extract neural traces from
+    """
+    processed_h5_path = "/data3/shared/processed_h5_kfc"
+    with h5py.File( f"{processed_h5_path}/{dataset}-data.h5", 'r') as f:
+        reversal_events = f['behavior']['reversal_events'][:] - 1
+        velocity_original = f['behavior']['velocity'][:]
+        trace_original = f['gcamp']['trace_array_original'][:]
+
+    # normalize neural traces of interest
+
+    neuron_ids = [get_neuron_id(neuron, dataset) for neuron in neurons]
+    trace_normalized = copy.deepcopy(trace_original)
+    for neuron_id in neuron_ids:
+        trace_normalized[:, neuron_id] = normalize(
+                    trace_original[:, neuron_id],
+                    normalization
+        )
+
+    print(f"reversal_events: {reversal_events}")
+    velocity_reversals = [
+                velocity_original[reversal_events[0][i]:reversal_events[1][i]]
+                    for i in range(len(reversal_events[0]))
+    ]
+    behavior_df = pd.DataFrame(np.concatenate(velocity_reversals),
+            columns=['velocity'])
+
+    trace_reversals = [
+                trace_normalized[reversal_events[0][i]:reversal_events[1][i]]
+                    for i in range(len(reversal_events[0]))
+    ]
+    trace_reversals_subset = [
+            trace_reversal[:, neuron_ids]
+                for trace_reversal in trace_reversals
+    ]
+
+    trace_df = pd.DataFrame(np.concatenate(
+                    trace_reversals_subset,
+                    axis=0),
+                columns=neurons)
+    trace_behavior_df = pd.concat([trace_df, behavior_df],
+                axis=1,
+                ignore_index=True)
+    print(trace_df)
+    print(trace_behavior_df)
+    return trace_df, behavior_df
 
 
 def concatenate_heatstim_datasets(
@@ -159,4 +224,4 @@ def concatenate_heatstim_datasets(
 
 
 if __name__ == "__main__":
-    explore_1()
+    run()
