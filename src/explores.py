@@ -22,8 +22,30 @@ def run():
             * neurons: RMED RMEV RMEL RIB AIB
             * number of animals: 4
     """
-    dataset_name = "RMED-RMEV-RMEL/RMED-RMEV-RMEL_reveral-velocity_f10_4.csv"
-    explore(dataset_name)
+    dataset_1_name = "RMED-RMEV-RMEL/RMED-RMEV-RMEL_reveral-velocity_f10_4.csv"
+    dataset_2_name = "RMED-RMEL-RIB/RMED-RMEL-RIB_reveral-velocity_f10_7.csv"
+
+    """
+    run tuning neuron experiments
+        - experiment: SAADR-SAADL-SMDDL_reveral-velocity_f10_3
+            * neurons: SAADR SAADL SMDDL SMDDR SMDVL RIVL RIVR
+            * number of animals: 3
+    """
+    dataset_3_name = "SAADR-SAADL-SMDDL/SAADR-SAADL-SMDDL_reveral-velocity_f10_3.csv"
+
+    """
+    run inconsistent-locomotion-neuron experiments
+        - experiment: AUAL-AIML-AIYL_reversal-velocity_f10_3
+            * neurons: AUAL AIML AIYL URYDL URYVL BAGL ASGL
+            * number of animals: 4
+    """
+    dataset_4_name = "AUAL-AIML-AIYL/AUAL-AIML-AIYL_reversal-velocity_f10_4.csv"
+    explore(dataset_4_name)
+
+    datasets = ["2022-07-15-12", "2022-08-02-01", "2023-01-17-01", "2023-01-17-14"]
+    neurons = ["AUAL", "AIML", "AIYL", "URYDL", "URYVL", "BAGL", "ASGL"]
+    normalization = 10
+    #concatenate_reversal_datasets(datasets, neurons, normalization)
 
 
 def explore(dataset_name):
@@ -34,7 +56,7 @@ def explore(dataset_name):
         min_temperature=[0.01, 0.1, 1],
         temperature_mode = "auto",
         time_offsets=10,
-        max_iterations=1,
+        max_iterations=10000,
         learning_rate=[0.0001, 0.001],
         output_dimension=[3, 5, 8],
         num_hidden_units=[8, 16, 32],
@@ -96,7 +118,7 @@ def concatenate_reversal_datasets(datasets, neurons, normalization):
     # index dataset by the number of animals concatenated
     dataset_index = len(datasets)
     new_trace_behavior_df.to_csv(
-            f"{new_dir}/{dir_name}_reveral-velocity_f{normalization}_{dataset_index}.csv",
+            f"{new_dir}/{dir_name}_reversal-velocity_f{normalization}_{dataset_index}.csv",
             index=False
     )
 
