@@ -3,7 +3,7 @@ from evaluate import iterate
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from tqdm import tqdm
-from util import create_train_test_sets
+from utils import create_train_test_sets
 import cebra
 import h5py
 import json

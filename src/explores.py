@@ -2,7 +2,7 @@ from evaluate import iterate
 from fit import fit_linear_model
 from query import get_neuron_id
 from tqdm import tqdm
-from util import create_train_test_sets, normalize
+from utils import create_train_test_sets, normalize
 import cebra
 import copy
 import h5py

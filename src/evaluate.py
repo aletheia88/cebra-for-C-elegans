@@ -3,7 +3,7 @@ from decode import knn_decode, linear_decode
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from tqdm import tqdm
-from util import create_train_test_sets
+from utils import create_train_test_sets
 import cebra
 import json
 import numpy as np
@@ -14,7 +14,7 @@ import scipy.stats as stats
 GCaMP_models_dir = "/home/alicia/data3_personal/cebra_grid_searches/gcamp_augment"
 GFP_models_dir = "/home/alicia/data3_personal/cebra_grid_searches/gfp_augment"
 score_dir = "/home/alicia/data3_personal/cebra_eval"
-
+'''
 PARAMETER_GRID = dict(
         min_temperature=[0.01, 0.1, 1],
         temperature_mode = "auto",
@@ -28,7 +28,7 @@ PARAMETER_GRID = dict(
 
 noise_multipliers = sorted([n for n in range(1, 11)] + \
         [float("{:.2f}".format(1 + 1/n)) for n in range(2, 7)])
-
+'''
 
 def iterate(
             parameter_grid,

@@ -2,7 +2,7 @@ from evaluate import evaluate_embeddings, evaluate_single_embedding
 from evaluate import iterate
 from fit import fit_single_session_cebra, fit_linear_model
 from sklearn.metrics.pairwise import cosine_similarity
-from util import create_train_test_sets
+from utils import create_train_test_sets
 import cebra
 import numpy as np
 import os
