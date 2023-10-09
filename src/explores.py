@@ -1,4 +1,5 @@
 from evaluate import iterate
+from fit import fit_linear_model
 from query import get_neuron_id
 from tqdm import tqdm
 from util import create_train_test_sets, normalize
@@ -9,6 +10,12 @@ import json
 import numpy as np
 import os
 import pandas as pd
+
+
+def benchmark(dataset_name):
+
+    average_r2 = fit_linear_model(dataset_name)
+    print(f"average r^2: {average_r2}")
 
 
 def run():
@@ -22,16 +29,19 @@ def run():
             * neurons: RMED RMEV RMEL RIB AIB
             * number of animals: 4
     """
-    dataset_1_name = "RMED-RMEV-RMEL/RMED-RMEV-RMEL_reveral-velocity_f10_4.csv"
-    dataset_2_name = "RMED-RMEL-RIB/RMED-RMEL-RIB_reveral-velocity_f10_7.csv"
+    dataset_1_name = \
+        "RMED-RMEV-RMEL/RMED-RMEV-RMEL_reversal-velocity_f10_4_linearized.csv"
+    dataset_2_name = \
+        "RMED-RMEL-RIB/RMED-RMEL-RIB_reversal-velocity_f10_7_linearized.csv"
 
     """
     run tuning neuron experiments
-        - experiment: SAADR-SAADL-SMDDL_reveral-velocity_f10_3
+        - experiment: SAADR-SAADL-SMDDL_reversal-velocity_f10_3
             * neurons: SAADR SAADL SMDDL SMDDR SMDVL RIVL RIVR
             * number of animals: 3
     """
-    dataset_3_name = "SAADR-SAADL-SMDDL/SAADR-SAADL-SMDDL_reveral-velocity_f10_3.csv"
+    dataset_3_name = \
+        "SAADR-SAADL-SMDDL/SAADR-SAADL-SMDDL_reversal-velocity_f10_3_linearized.csv"
 
     """
     run inconsistent-locomotion-neuron experiments
@@ -39,13 +49,9 @@ def run():
             * neurons: AUAL AIML AIYL URYDL URYVL BAGL ASGL
             * number of animals: 4
     """
-    dataset_4_name = "AUAL-AIML-AIYL/AUAL-AIML-AIYL_reversal-velocity_f10_4.csv"
+    dataset_4_name = \
+        "AUAL-AIML-AIYL/AUAL-AIML-AIYL_reversal-velocity_f10_4_linearized.csv"
     explore(dataset_4_name)
-
-    datasets = ["2022-07-15-12", "2022-08-02-01", "2023-01-17-01", "2023-01-17-14"]
-    neurons = ["AUAL", "AIML", "AIYL", "URYDL", "URYVL", "BAGL", "ASGL"]
-    normalization = 10
-    #concatenate_reversal_datasets(datasets, neurons, normalization)
 
 
 def explore(dataset_name):
@@ -53,15 +59,15 @@ def explore(dataset_name):
     data_path = "/home/alicia/data3_personal/cebra_data"
     parameter_grid = dict(
         model_architecture="offset10-model",
-        min_temperature=[0.01, 0.1, 1],
+        min_temperature=[0.01],
         temperature_mode = "auto",
         time_offsets=10,
         max_iterations=10000,
-        learning_rate=[0.0001, 0.001],
-        output_dimension=[3, 5, 8],
-        num_hidden_units=[8, 16, 32],
-        batch_size=128,
-        device='cuda:3',
+        learning_rate=[0.0001],
+        output_dimension=[8],
+        num_hidden_units=[16],
+        batch_size=None,
+        device='cuda:0',
         #device="cuda_if_available",
         verbose=True)
 
@@ -89,7 +95,7 @@ def explore(dataset_name):
             num_neighbors, num_label, save_models_dir)
 
 
-def concatenate_reversal_datasets(datasets, neurons, normalization):
+def concatenate_reversal_datasets(datasets, neurons, normalization, linearize):
 
     """Concatenate all the given animal datasets by appending the next animal's
     neural activities and behaviors to the ones of the previous animal
@@ -102,7 +108,10 @@ def concatenate_reversal_datasets(datasets, neurons, normalization):
     new_behavior_list = []
     new_trace_list = []
     for dataset in datasets:
-        trace_df, behavior_df = extract_reversals(dataset, neurons, normalization)
+        trace_df, behavior_df = extract_reversals(dataset,
+                    neurons,
+                    normalization,
+                    linearize)
         new_behavior_list.append(behavior_df)
         new_trace_list.append(trace_df)
 
@@ -117,13 +126,19 @@ def concatenate_reversal_datasets(datasets, neurons, normalization):
 
     # index dataset by the number of animals concatenated
     dataset_index = len(datasets)
+    if linearize:
+        new_file_name = \
+            f"{dir_name}_reversal-velocity_f{normalization}_{dataset_index}_linearized"
+    else:
+        new_file_name = \
+            f"{dir_name}_reversal-velocity_f{normalization}_{dataset_index}"
     new_trace_behavior_df.to_csv(
-            f"{new_dir}/{dir_name}_reversal-velocity_f{normalization}_{dataset_index}.csv",
+            f"{new_dir}/{new_file_name}.csv",
             index=False
     )
 
 
-def extract_reversals(dataset, neurons, normalization):
+def extract_reversals(dataset, neurons, normalization, linearize):
 
     """Extract segments from the given dataset's neural activities and animal
     behaviors where reversal happens and concatenate the extracted segments to
@@ -150,10 +165,16 @@ def extract_reversals(dataset, neurons, normalization):
         )
 
     print(f"reversal_events: {reversal_events}")
-    velocity_reversals = [
-                velocity_original[reversal_events[0][i]:reversal_events[1][i]]
-                    for i in range(len(reversal_events[0]))
-    ]
+    if linearize:
+        velocity_reversals = [
+                    linearize_trace(velocity_original[reversal_events[0][i]:reversal_events[1][i]])
+                        for i in range(len(reversal_events[0]))
+        ]
+    else:
+        velocity_reversals = [
+                    velocity_original[reversal_events[0][i]:reversal_events[1][i]]
+                        for i in range(len(reversal_events[0]))
+        ]
     behavior_df = pd.DataFrame(np.concatenate(velocity_reversals),
             columns=['velocity'])
 
@@ -165,7 +186,6 @@ def extract_reversals(dataset, neurons, normalization):
             trace_reversal[:, neuron_ids]
                 for trace_reversal in trace_reversals
     ]
-
     trace_df = pd.DataFrame(np.concatenate(
                     trace_reversals_subset,
                     axis=0),
@@ -176,6 +196,11 @@ def extract_reversals(dataset, neurons, normalization):
     print(trace_df)
     print(trace_behavior_df)
     return trace_df, behavior_df
+
+
+def linearize_trace(trace):
+
+    return np.linspace(trace[0], trace[-1], len(trace))
 
 
 def concatenate_heatstim_datasets(
@@ -246,4 +271,6 @@ def concatenate_heatstim_datasets(
 
 
 if __name__ == "__main__":
-    run()
+    dataset_name = \
+            "AUAL-AIML-AIYL/AUAL-AIML-AIYL_reversal-velocity_f10_4_linearized.csv"
+    benchmark(dataset_name)
