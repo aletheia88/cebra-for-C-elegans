@@ -116,7 +116,12 @@ def fit_single_session_cebra(
             num_augments, noise_multiplier, num_neighbors, num_label, save_models_dir)
 
 
-def fit_linear_model(ds_name, train_ratio=0.8, num_train_test_splits=5):
+def fit_linear_model(ds_name,
+                     train_ratio=0.8,
+                     num_train_test_splits=5,
+                     num_augmentations=0,
+                     noise_multiplier=1,
+                     num_label=1):
 
     '''Train a linear decoder that maps neuronal activities to behavior(s);
     then report the test-time performance in terms of the R^2 score
@@ -129,9 +134,6 @@ def fit_linear_model(ds_name, train_ratio=0.8, num_train_test_splits=5):
     model = LinearRegression()
     aggregate_r2_score = 0
     noise_ds_name = '2022-01-07-03/2022-01-07-03_F20.csv'
-    num_augmentations = 0
-    noise_multiplier = 1
-    num_label = 1
     train_test_sets = create_train_test_sets(ds_name, noise_ds_name,
             train_ratio, num_train_test_splits, num_augmentations,
             noise_multiplier, num_label)
