@@ -95,7 +95,11 @@ def explore(dataset_name):
             num_neighbors, num_label, save_models_dir)
 
 
-def concatenate_reversal_datasets(datasets, neurons, normalization, linearize):
+def concatenate_reversal_datasets(datasets,
+                                  neurons,
+                                  normalization,
+                                  linearize,
+                                  export_csv):
 
     """Concatenate all the given animal datasets by appending the next animal's
     neural activities and behaviors to the ones of the previous animal
@@ -124,18 +128,21 @@ def concatenate_reversal_datasets(datasets, neurons, normalization, linearize):
     new_behavior_df = pd.concat(new_behavior_list, ignore_index=True)
     new_trace_behavior_df = pd.concat([new_trace_df, new_behavior_df], axis=1)
 
-    # index dataset by the number of animals concatenated
-    dataset_index = len(datasets)
-    if linearize:
-        new_file_name = \
-            f"{dir_name}_reversal-velocity_f{normalization}_{dataset_index}_linearized"
+    if export_csv:
+        # index dataset by the number of animals concatenated
+        dataset_index = len(datasets)
+        if linearize:
+            new_file_name = \
+                f"{dir_name}_reversal-velocity_f{normalization}_{dataset_index}_linearized"
+        else:
+            new_file_name = \
+                f"{dir_name}_reversal-velocity_f{normalization}_{dataset_index}"
+        new_trace_behavior_df.to_csv(
+                f"{new_dir}/{new_file_name}.csv",
+                index=False
+        )
     else:
-        new_file_name = \
-            f"{dir_name}_reversal-velocity_f{normalization}_{dataset_index}"
-    new_trace_behavior_df.to_csv(
-            f"{new_dir}/{new_file_name}.csv",
-            index=False
-    )
+        return new_trace_behavior_df
 
 
 def extract_reversals(dataset, neurons, normalization, linearize):
@@ -193,8 +200,7 @@ def extract_reversals(dataset, neurons, normalization, linearize):
     trace_behavior_df = pd.concat([trace_df, behavior_df],
                 axis=1,
                 ignore_index=True)
-    print(trace_df)
-    print(trace_behavior_df)
+
     return trace_df, behavior_df
 
 
