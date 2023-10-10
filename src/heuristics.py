@@ -3,8 +3,11 @@ from itertools import product
 from metadata_queries.search import *
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.svm import SVR
 from utils import create_train_test_sets
 import pandas as pd
 
@@ -45,9 +48,10 @@ class BaseModel:
         label_tests = train_test_sets["label_tests"]
         print(neural_trains[0].shape)
 
+        aggregate_r2_score = 0
         for i in range(num_train_test_splits):
-            model._fit(neural_trains[i], label_trains[i])
-            predicted_label = model._predict(neural_tests[i])
+            self._fit(neural_trains[i], label_trains[i])
+            predicted_label = self._predict(neural_tests[i])
             r2 = r2_score(label_tests[i], predicted_label)
             print(f'r2: {r2}')
             aggregate_r2_score += r2
@@ -57,7 +61,7 @@ class BaseModel:
     def _fit(self, X, y):
         if self.model is None:
             raise NotImplementedError("Subclass must define the model.")
-        self.model.fit(X, y)
+        self.model.fit(X, y.ravel())
 
     def _predict(self, X):
         return self.model.predict(X)
@@ -72,7 +76,30 @@ class LinearModel(BaseModel):
 class PolynormialModel(BaseModel):
 
     def __init__(self, degree):
-        model = make_pipeline(PolynomialFeatures(degree), LinearRegression())
+        self.model = make_pipeline(PolynomialFeatures(degree), LinearRegression())
+
+
+class SVMModel(BaseModel):
+
+    def __init__(self, kernel):
+        self.model = SVR(kernel=kernel)
+
+
+class KNNModel(BaseModel):
+
+    def __init__(self, n_neighbors):
+        self.model = KNeighborsRegressor(n_neighbors)
+
+
+class MLPModel(BaseModel):
+
+    def __init__(self):
+        self.model = MLPRegressor(hidden_layer_sizes=(100,),
+                        max_iter=1000,
+                        alpha=1e-4,
+                        solver='adam',
+                        random_state=42,
+                        learning_rate_init=0.001)
 
 
 def combine(neurons):
@@ -97,8 +124,28 @@ def build_heuristics(datasets, neurons, num_behavior):
     avg_r2_linear = linear_model.average_r2_cv(dataset_df)
     print(f"avg_r2_linear: {avg_r2_linear}")
 
+    polynormial_model = PolynormialModel(3)
+    avg_r2_poly = polynormial_model.average_r2_cv(dataset_df)
+    print(f"avg_r2_poly: {avg_r2_poly}")
+
+    svm_model = SVMModel('rbf')
+    avg_r2_svm = svm_model.average_r2_cv(dataset_df)
+    print(f"avg_r2_svm: {avg_r2_svm}")
+
+    knn_model = KNNModel(123)
+    avg_r2_knn = knn_model.average_r2_cv(dataset_df)
+    print(f"avg_r2_knn: {avg_r2_knn}")
+
+    mlp_model = MLPModel()
+    avg_r2_mlp = mlp_model.average_r2_cv(dataset_df)
+    print(f"avg_r2_mlp: {avg_r2_mlp}")
+
 
 if __name__ == "__main__":
     #combine(variable_coupling_neurons)
+    datasets = ["2022-06-14-13", "2022-07-20-01", "2022-08-02-01",
+            "2023-01-23-21"]
+    neurons = ["RMED", "RMEV", "RMEL", "RIB", "AIB"]
+    num_behavior = 1
     build_heuristics(datasets, neurons, num_behavior)
 
