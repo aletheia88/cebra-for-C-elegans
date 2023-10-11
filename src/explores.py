@@ -51,7 +51,23 @@ def run():
     """
     dataset_4_name = \
         "AUAL-AIML-AIYL/AUAL-AIML-AIYL_reversal-velocity_f10_4_linearized.csv"
-    explore(dataset_4_name)
+    """
+    run variable-coupling neuron experiments
+        - experiment 1: RIR-RIH-URBL_reversal-velocity_f10_4_linearized
+            * neurons: 'RIR', 'RIH', 'URBL', 'RMDDL', 'IL1R', 'IL1L'
+            * number of animals: 4
+        - experiment 2:
+          CEPVR-OLLR-OLQVR-URXR_reversal-velocity_f10_10_linearized
+            * neurons: 'CEPVR', 'OLLR', 'OLQVR', 'URXR', 'URXL', 'OLQVL',
+                        'CEPVL', 'OLLL', 'CEPDR'
+            * number of animals: 10
+    """
+    dataset_5_name = \
+        "RIR-RIH-URBL/RIR-RIH-URBL_reversal-velocity_f10_4_linearized.csv"
+    dataset_6_name = \
+        "CEPVR-OLLR-OLQVR-URXR/CEPVR-OLLR-OLQVR-URXR_reversal-velocity_f10_10_linearized.csv"
+
+    explore(dataset_6_name)
 
 
 def explore(dataset_name):
@@ -59,13 +75,13 @@ def explore(dataset_name):
     data_path = "/home/alicia/data3_personal/cebra_data"
     parameter_grid = dict(
         model_architecture="offset10-model",
-        min_temperature=[0.01],
+        min_temperature=[0.01, 0.1, 1],
         temperature_mode = "auto",
         time_offsets=10,
         max_iterations=10000,
-        learning_rate=[0.0001],
-        output_dimension=[8],
-        num_hidden_units=[16],
+        learning_rate=[0.0001, 0.001],
+        output_dimension=[3, 5, 8],
+        num_hidden_units=[8, 16, 32],
         batch_size=None,
         device='cuda:0',
         #device="cuda_if_available",
@@ -171,7 +187,7 @@ def extract_reversals(dataset, neurons, normalization, linearize):
                     normalization
         )
 
-    print(f"reversal_events: {reversal_events}")
+    #print(f"reversal_events: {reversal_events}")
     if linearize:
         velocity_reversals = [
                     linearize_trace(velocity_original[reversal_events[0][i]:reversal_events[1][i]])
@@ -277,6 +293,13 @@ def concatenate_heatstim_datasets(
 
 
 if __name__ == "__main__":
-    dataset_name = \
-            "AUAL-AIML-AIYL/AUAL-AIML-AIYL_reversal-velocity_f10_4_linearized.csv"
-    benchmark(dataset_name)
+
+    normalization = 10
+    linearize = True
+    export_csv = True
+    '''concatenate_reversal_datasets(datasets,
+                                  neurons,
+                                  normalization,
+                                  linearize,
+                                  export_csv)'''
+    run()
