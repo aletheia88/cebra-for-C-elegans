@@ -151,7 +151,53 @@ def concatenate_reversal_datasets(datasets,
                 index=False
         )
     else:
+        print(new_trace_behavior_df)
         return new_trace_behavior_df
+
+
+def extract_reversal_timepoints(dataset, neurons, normalization):
+
+    processed_h5_path = "/data3/shared/processed_h5_kfc"
+    with h5py.File( f"{processed_h5_path}/{dataset}-data.h5", 'r') as f:
+        reversal_events = f['behavior']['reversal_events'][:] - 1
+        trace_original = f['gcamp']['trace_array_original'][:]
+
+    # normalize neural traces of interest
+
+    neuron_ids = [get_neuron_id(neuron, dataset) for neuron in neurons]
+    trace_normalized = copy.deepcopy(trace_original)
+    for neuron_id in neuron_ids:
+        trace_normalized[:, neuron_id] = normalize(
+                    trace_original[:, neuron_id],
+                    normalization
+        )
+    trace_reversals = [
+                trace_normalized[reversal_events[0][i]:reversal_events[1][i]+1]
+                    for i in range(len(reversal_events[0]))
+    ]
+    trace_reversals_subset = [
+            trace_reversal[:, neuron_ids]
+                for trace_reversal in trace_reversals
+    ]
+    trace_df = pd.DataFrame(
+            np.concatenate(
+                    trace_reversals_subset,
+                    axis=0),
+            columns=neurons)
+
+    reversal_timepoints = []
+    for ith_event in range(len(reversal_events[0])):
+
+        reversal_start = reversal_events[0][ith_event]
+        reversal_end = reversal_events[1][ith_event]
+        reversal_length = reversal_end - reversal_start
+        reversal_timepoints += list(range(reversal_length, -1, -1))
+
+    behavior_df = pd.DataFrame(
+            reversal_timepoints,
+            columns=['timepoints_from_reversal_ends'])
+
+    return trace_df, behavior_df
 
 
 def extract_reversals(dataset, neurons, normalization, linearize):
@@ -202,10 +248,11 @@ def extract_reversals(dataset, neurons, normalization, linearize):
             trace_reversal[:, neuron_ids]
                 for trace_reversal in trace_reversals
     ]
-    trace_df = pd.DataFrame(np.concatenate(
+    trace_df = pd.DataFrame(
+            np.concatenate(
                     trace_reversals_subset,
                     axis=0),
-                columns=neurons)
+            columns=neurons)
     trace_behavior_df = pd.concat([trace_df, behavior_df],
                 axis=1,
                 ignore_index=True)
@@ -287,12 +334,19 @@ def concatenate_heatstim_datasets(
 
 if __name__ == "__main__":
 
+    datasets = ['2022-06-14-07', '2022-06-14-13', '2022-08-02-01',
+    '2023-01-09-15', '2023-01-09-22', '2023-01-10-07', '2023-01-16-15',
+    '2023-01-19-08', '2023-01-19-22', '2023-03-07-01']
+    neurons = ['CEPVR', 'OLLR', 'OLQVR', 'URXR', 'URXL', 'OLQVL', 'CEPVL',
+            'OLLL', 'CEPDR']
     normalization = 10
     linearize = True
-    export_csv = True
-    '''concatenate_reversal_datasets(datasets,
+    export_csv = False
+    concatenate_reversal_datasets(datasets,
                                   neurons,
                                   normalization,
                                   linearize,
-                                  export_csv)'''
-    run()
+                                  export_csv)
+    #extract_reversals(datasets[0], neurons, normalization, linearize)
+    #extract_reversal_timepoints(datasets[0], neurons, normalization)
+    # run()
