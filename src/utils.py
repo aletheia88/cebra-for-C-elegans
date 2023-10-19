@@ -314,8 +314,6 @@ def augment(augmented_neural,
 
         augmented_data = np.hstack((augmented_neural, derivatives))
         augmented_behaviors = np.tile(behavior_data, num_noise_augment + 1)
-        ### TODO: delete
-        print(augmented_behaviors.shape)
         concat_augmented_behaviors = np.concatenate([
                     augmented_behaviors[:, i].ravel()
                     for i in range(augmented_behaviors.shape[1])
