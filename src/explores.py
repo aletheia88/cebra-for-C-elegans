@@ -70,12 +70,12 @@ def explore(dataset_name):
         min_temperature=[0.01, 0.1, 1],
         temperature_mode = "auto",
         time_offsets=10,
-        max_iterations=10000,
+        max_iterations=1,
         learning_rate=[0.0001, 0.001],
         output_dimension=[3, 5, 8],
         num_hidden_units=[8, 16, 32],
-        batch_size=1024,
-        device='cuda:2',
+        batch_size=None,
+        device='cuda:1',
         #device="cuda_if_available",
         verbose=True)
 
@@ -142,23 +142,23 @@ def concatenate_reversal_datasets(datasets,
         dataset_index = len(datasets)
         if linearize:
             new_file_name = \
-                f"{dir_name}_reversal-velocity_f{normalization}_{dataset_index}_linearized"
+                f"{dir_name}_reversal-timepoints_f{normalization}_{dataset_index}_linearized"
         else:
             new_file_name = \
-                f"{dir_name}_reversal-velocity_f{normalization}_{dataset_index}"
+                f"{dir_name}_reversal-timepoints_f{normalization}_{dataset_index}"
         new_trace_behavior_df.to_csv(
                 f"{new_dir}/{new_file_name}.csv",
                 index=False
         )
+        print(f"file exported at {new_dir}/{new_file_name}.csv")
     else:
-        print(new_trace_behavior_df)
         return new_trace_behavior_df
 
 
 def extract_reversal_timepoints(dataset, neurons, normalization):
 
     processed_h5_path = "/data3/shared/processed_h5_kfc"
-    with h5py.File( f"{processed_h5_path}/{dataset}-data.h5", 'r') as f:
+    with h5py.File(f"{processed_h5_path}/{dataset}-data.h5", 'r') as f:
         reversal_events = f['behavior']['reversal_events'][:] - 1
         trace_original = f['gcamp']['trace_array_original'][:]
 
@@ -194,7 +194,7 @@ def extract_reversal_timepoints(dataset, neurons, normalization):
         reversal_timepoints += list(range(reversal_length, -1, -1))
 
     behavior_df = pd.DataFrame(
-            reversal_timepoints,
+            np.array(reversal_timepoints).astype(float),
             columns=['timepoints_from_reversal_ends'])
 
     return trace_df, behavior_df
@@ -334,19 +334,18 @@ def concatenate_heatstim_datasets(
 
 if __name__ == "__main__":
 
-    datasets = ['2022-06-14-07', '2022-06-14-13', '2022-08-02-01',
-    '2023-01-09-15', '2023-01-09-22', '2023-01-10-07', '2023-01-16-15',
-    '2023-01-19-08', '2023-01-19-22', '2023-03-07-01']
-    neurons = ['CEPVR', 'OLLR', 'OLQVR', 'URXR', 'URXL', 'OLQVL', 'CEPVL',
-            'OLLL', 'CEPDR']
+    neurons = ["IL1DL", "IL1DR", "IL1VL", "IL1VR", "IL1L", "IL1R"]
+    datasets = ['2022-07-15-12', '2023-01-05-01', '2023-01-06-01',
+            '2023-01-16-15',
+            '2023-01-16-22', '2023-01-19-01', '2023-01-23-08']
     normalization = 10
-    linearize = True
-    export_csv = False
-    concatenate_reversal_datasets(datasets,
+    linearize = False
+    export_csv = True
+    """concatenate_reversal_datasets(datasets,
                                   neurons,
                                   normalization,
                                   linearize,
-                                  export_csv)
-    #extract_reversals(datasets[0], neurons, normalization, linearize)
-    #extract_reversal_timepoints(datasets[0], neurons, normalization)
-    # run()
+                                  export_csv)"""
+    dataset_name = \
+            "IL1DL-IL1DR-IL1VL-IL1VR/IL1DL-IL1DR-IL1VL-IL1VR_reversal-timepoints_f10_7.csv"
+    explore(dataset_name)
