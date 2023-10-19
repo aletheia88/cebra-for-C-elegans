@@ -51,33 +51,6 @@ def run():
     """
     dataset_4_name = \
         "AUAL-AIML-AIYL/AUAL-AIML-AIYL_reversal-velocity_f10_4_linearized.csv"
-    """
-    run variable-coupling neuron experiments
-<<<<<<< HEAD
-        - experiment 1: RIR-RIH-URBL_reversal-velocity_f10_4_linearized
-            * neurons: 'RIR', 'RIH', 'URBL', 'RMDDL', 'IL1R', 'IL1L'
-            * number of animals: 4
-        - experiment 2:
-          CEPVR-OLLR-OLQVR-URXR_reversal-velocity_f10_10_linearized
-            * neurons: 'CEPVR', 'OLLR', 'OLQVR', 'URXR', 'URXL', 'OLQVL',
-                        'CEPVL', 'OLLL', 'CEPDR'
-            * number of animals: 10
-    """
-    dataset_5_name = \
-        "RIR-RIH-URBL/RIR-RIH-URBL_reversal-velocity_f10_4_linearized.csv"
-    dataset_6_name = \
-        "CEPVR-OLLR-OLQVR-URXR/CEPVR-OLLR-OLQVR-URXR_reversal-velocity_f10_10_linearized.csv"
-
-    explore(dataset_6_name)
-=======
-        - experiment: RIR-RIH-URBL_reversal-velocity_f10_4_linearized
-            * neurons: 'RIR', 'RIH', 'URBL', 'RMDDL', 'IL1R', 'IL1L'
-            * number of animals: 4
-    """
-    dataset_5_name = \
-        "RIR-RIH-URBL/RIR-RIH-URBL_reversal-velocity_f10_4_linearized.csv"
-    explore(dataset_5_name)
->>>>>>> d75853028c00f3b2e7fd415e3b68efb0bfe34a68
 
 
 def explore(dataset_name):
@@ -88,11 +61,7 @@ def explore(dataset_name):
         min_temperature=[0.01, 0.1, 1],
         temperature_mode = "auto",
         time_offsets=10,
-<<<<<<< HEAD
-        max_iterations=10000,
-=======
         max_iterations=1,
->>>>>>> d75853028c00f3b2e7fd415e3b68efb0bfe34a68
         learning_rate=[0.0001, 0.001],
         output_dimension=[3, 5, 8],
         num_hidden_units=[8, 16, 32],
@@ -356,17 +325,6 @@ def concatenate_heatstim_datasets(
 
 if __name__ == "__main__":
 
-<<<<<<< HEAD
-    normalization = 10
-    linearize = True
-    export_csv = True
-    '''concatenate_reversal_datasets(datasets,
-                                  neurons,
-                                  normalization,
-                                  linearize,
-                                  export_csv)'''
-    run()
-=======
     neurons = ["IL1DL", "IL1DR", "IL1VL", "IL1VR", "IL1L", "IL1R"]
     datasets = ['2022-07-15-12', '2023-01-05-01', '2023-01-06-01',
             '2023-01-16-15',
@@ -382,4 +340,3 @@ if __name__ == "__main__":
     dataset_name = \
             "IL1DL-IL1DR-IL1VL-IL1VR/IL1DL-IL1DR-IL1VL-IL1VR_reversal-timepoints_f10_7.csv"
     explore(dataset_name)
->>>>>>> d75853028c00f3b2e7fd415e3b68efb0bfe34a68
