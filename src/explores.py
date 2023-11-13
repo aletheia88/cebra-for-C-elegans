@@ -1,5 +1,6 @@
 from evaluate import iterate
 from fit import fit_linear_model
+from pprint import pprint
 from query import get_neuron_id
 from tqdm import tqdm
 from utils import create_train_test_sets, normalize
@@ -83,7 +84,7 @@ def explore(dataset_name):
     output_path = "/home/alicia/data3_personal/cebra_grid_searches"
 
     if not os.path.exists(f"{output_path}/{experiment_dir}"):
-        os.mkdir(f"{output_path}/{experiment_dir}-IL1DL")
+        os.mkdir(f"{output_path}/{experiment_dir}")
 
     save_models_dir = f"{output_path}/{experiment_dir}/{experiment_name}"
     if not os.path.exists(save_models_dir):
@@ -94,14 +95,15 @@ def explore(dataset_name):
             num_neighbors, num_label, save_models_dir)
 
 
-def concatenate_reversal_datasets(datasets,
+def concatenate_reversal_timepoints(datasets,
                                   neurons,
                                   normalization,
                                   linearize,
                                   export_csv):
 
     """Concatenate all the given animal datasets by appending the next animal's
-    neural activities and behaviors to the ones of the previous animal
+    neural activities and behaviors (i.e. time points before reversal ends) to
+    the ones of the previous animal
 
     Args:
         datasets: a list of dataset names; e.g. ['2023-01-10-07',
@@ -191,6 +193,57 @@ def extract_reversal_timepoints(dataset, neurons, normalization):
     return trace_df, behavior_df
 
 
+def concatenate_reversal_velocities(datasets,
+                                  neurons,
+                                  normalization,
+                                  export_csv):
+    """Concatenate all the given animal datasets by appending the next animal's
+    neural activities and velocities to the ones of the previous animal
+
+    Args:
+        datasets: a list of dataset names; e.g. ['2023-01-10-07',
+                '2023-01-10-14', '2023-01-16-08', '2023-01-23-15']
+        neurons: a list of neuron names
+    """
+    new_behavior_list = []
+    new_trace_list = []
+    for dataset in datasets:
+        linearize = False
+        trace_df, behavior_df = extract_reversals(
+                    dataset,
+                    neurons,
+                    normalization,
+                    linearize)
+        new_behavior_list.append(behavior_df)
+        new_trace_list.append(trace_df)
+
+    dir_name = '-'.join(neurons[:4])
+    new_dir = f"/home/alicia/data3_personal/cebra_data/{dir_name}"
+    if not os.path.exists(new_dir):
+        os.mkdir(new_dir)
+
+    new_trace_df = pd.concat(new_trace_list, ignore_index=True)
+    new_behavior_df = pd.concat(new_behavior_list, ignore_index=True)
+    new_trace_behavior_df = pd.concat([new_trace_df, new_behavior_df], axis=1)
+
+    if export_csv:
+        # index dataset by the number of animals concatenated
+        dataset_index = len(datasets)
+        if linearize:
+            new_file_name = \
+                f"{dir_name}_reversal-velocities_f{normalization}_{dataset_index}_linearized"
+        else:
+            new_file_name = \
+                f"{dir_name}_reversal-velocities_f{normalization}_{dataset_index}"
+        new_trace_behavior_df.to_csv(
+                f"{new_dir}/{new_file_name}.csv",
+                index=False
+        )
+        print(f"file exported at {new_dir}/{new_file_name}.csv")
+    else:
+        return new_trace_behavior_df
+
+
 def extract_reversals(dataset, neurons, normalization, linearize):
 
     """Extract segments from the given dataset's neural activities and animal
@@ -249,6 +302,71 @@ def extract_reversals(dataset, neurons, normalization, linearize):
                 ignore_index=True)
 
     return trace_df, behavior_df
+
+
+def extract_reversal_events(datasets):
+
+    """
+    Find the start/end time point of each reversal event for each of the
+    given datasets with the indexing of the concatenated dataset of multiple
+    animals"""
+
+    processed_h5_path = "/data3/shared/processed_h5_kfc"
+    current_timepoint = 0
+    num_animals = len(datasets)
+
+    reversal_starts_dict = {dataset: [] for dataset in datasets}
+
+    for dataset_id in range(num_animals):
+
+        dataset = datasets[dataset_id]
+
+        with h5py.File( f"{processed_h5_path}/{dataset}-data.h5", 'r') as f:
+
+            reversal_events = f['behavior']['reversal_events'][:] - 1
+            reversal_start_timepoints = reversal_events[0]
+            reversal_end_timepoints = reversal_events[1]
+            total_reversals = len(reversal_start_timepoints)
+            print(f"total reversal events in {dataset}: {total_reversals}")
+
+            previous_end = 0
+
+            if dataset_id == 0:
+                for t in range(total_reversals):
+                    start_event = reversal_start_timepoints[t]
+                    end_event = reversal_end_timepoints[t]
+
+                    if t == 0:
+                        start_current_dataset = 0
+                        end_current_dataset = end_event - start_event
+                    else:
+                        start_current_dataset = end_current_dataset
+                        end_current_dataset = end_current_dataset + (end_event - start_event)
+
+                    reversal_starts_dict[dataset].append(start_current_dataset)
+                    print(f"reversal {t}: ({start_event}, {end_event}) ---> ({start_current_dataset}, {end_current_dataset})")
+
+                # update the start of timepoint
+                current_timepoint = end_current_dataset
+
+            else:
+                for t in range(total_reversals):
+                    start_event = reversal_start_timepoints[t]
+                    end_event = reversal_end_timepoints[t]
+                    if t == 0:
+                        start_current_dataset = current_timepoint + 1
+                        end_current_dataset = end_event - start_event + current_timepoint
+                    else:
+                        start_current_dataset = end_current_dataset
+                        end_current_dataset = end_current_dataset + (end_event - start_event)
+
+                    reversal_starts_dict[dataset].append(start_current_dataset)
+                    print(f"reversal {t}: ({start_event}, {end_event}) ---> ({start_current_dataset}, {end_current_dataset})")
+
+                # update the start of timepoint
+                current_timepoint = end_current_dataset
+
+    return reversal_starts_dict
 
 
 def linearize_trace(trace):
@@ -325,18 +443,33 @@ def concatenate_heatstim_datasets(
 
 if __name__ == "__main__":
 
-    neurons = ["IL1DL", "IL1DR", "IL1VL", "IL1VR", "IL1L", "IL1R"]
-    datasets = ['2022-07-15-12', '2023-01-05-01', '2023-01-06-01',
-            '2023-01-16-15',
-            '2023-01-16-22', '2023-01-19-01', '2023-01-23-08']
+    neurons = ["AVA", "AVE", "AVB"]
+    datasets = ["2022-07-15-12", "2023-01-05-18", "2023-01-09-08",
+            "2023-01-10-07", "2023-01-10-14", "2023-01-16-08", "2023-01-19-01",
+            "2023-01-19-08", "2023-01-19-15", "2023-01-23-15"]
+
     normalization = 10
     linearize = False
     export_csv = True
-    """concatenate_reversal_datasets(datasets,
+    """
+    concatenate_reversal_velocities(datasets,
+                                  neurons,
+                                  normalization,
+                                  export_csv)
+    concatenate_reversal_timepoints(datasets,
                                   neurons,
                                   normalization,
                                   linearize,
-                                  export_csv)"""
-    dataset_name = \
-            "IL1DL-IL1DR-IL1VL-IL1VR/IL1DL-IL1DR-IL1VL-IL1VR_reversal-timepoints_f10_7.csv"
-    explore(dataset_name)
+                                  export_csv)
+    """
+    dataset_name = "AVA-AVE-AVB/AVA-AVE-AVB_reversal-velocities_f10_10.csv"
+    reversal_starts_dict = extract_reversal_events(datasets)
+    pprint(f"reversal timepoints: {reversal_starts_dict}")
+    #explore(dataset_name)
+    """
+    concatenate_reversal_timepoints(datasets,
+                                  neurons,
+                                  normalization,
+                                  linearize,
+                                  export_csv)
+    """
